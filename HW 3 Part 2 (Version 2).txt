@@ -1,0 +1,28 @@
+movies_weights = LOAD './hadoop-class-example/data/movie-weights/imdb-weights.tsv' USING PigStorage() AS (movie:chararray, year:int, weight:float);
+
+movies = LOAD './hadoop-class-example/data/movie/imdb.tsv' USING PigStorage() AS (actor:chararray, movie:chararray, year:int);
+
+full_outer = JOIN movies_weights BY (movie, year) FULL OUTER, movies BY (movie,year);
+
+genFull_outer = FOREACH full_outer GENERATE movies_weights::movie AS movie, movies_weights::year AS year, movies_weights::weight AS weight, movies::actor AS actor;
+
+filtered = FILTER genFull_outer BY actor is not null;
+
+grouped = GROUP filtered BY year;
+
+gen_maxWeight = FOREACH grouped GENERATE group AS year, FLATTEN(filtered), MAX(filtered.weight) AS max_weight;
+
+gen_maxWeight2 = FOREACH gen_maxWeight GENERATE year, filtered::movie AS movie, filtered::weight AS weight, filtered::actor AS actor, max_weight;
+
+filtered2 = FILTER gen_maxWeight2 BY weight == max_weight;
+
+grouped2 = group filtered2 BY year;
+
+
+final_res = FOREACH grouped2 {
+dist_mov = DISTINCT filtered2.movie;
+dist_wei = DISTINCT filtered2.weight;
+actors = BagToString(filtered2.actor, ';');
+actors_tuple = TOTUPLE(actors);
+GENERATE group AS year, FLATTEN(dist_mov) AS movie, FLATTEN(dist_wei) AS weight, actors_tuple AS actors;
+};

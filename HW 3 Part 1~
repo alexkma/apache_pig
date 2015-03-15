@@ -1,0 +1,5 @@
+movies = LOAD './hadoop-class-example/data/movie/imdb.tsv' USING PigStorage() AS (actor:chararray, movie:chararray, year:int);
+gen_movies = FOREACH movies GENERATE movie, actor;
+group_movies = GROUP gen_movies BY actor;
+final_movies = FOREACH group_movies GENERATE COUNT(gen_movies) AS count, group AS actor;
+movies_ordered = ORDER final_movies BY count DESC;
